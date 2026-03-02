@@ -1,31 +1,35 @@
 import os
 import sys
 from pathlib import Path
-import dj_database_url
 from dotenv import load_dotenv
 
-# 1. PATHS AND ENV
+# 1️⃣ PATHS AND ENV
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / '.env')
 
-# 2. SECURITY
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-r2=&)+30s#bgh51ze)8)&1+h&o6d0d2^=94+z@@ft2^c)1&@9=')
+# 2️⃣ SECURITY
+SECRET_KEY = os.getenv(
+    'SECRET_KEY', 
+    'django-insecure-r2=&)+30s#bgh51ze)8)&1+h&o6d0d2^=94+z@@ft2^c)1&@9='
+)
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',') if os.getenv('ALLOWED_HOSTS') else []
 
-# 3. AUTH & SOCIAL CONFIG
-AUTH_USER_MODEL = 'api.User' 
+# 3️⃣ AUTH & SOCIAL CONFIG
+AUTH_USER_MODEL = 'api.User'  # Your CustomUser model
 SITE_ID = 1
 SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET")
-SOCIALACCOUNT_ADAPTER = 'api.adapters.RoleSocialAccountAdapter' # Make sure this matches your file name
+
+SOCIALACCOUNT_ADAPTER = 'api.adapters.RoleSocialAccountAdapter'
 
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
     'allauth.account.auth_backends.AuthenticationBackend',
 ]
 
-# 4. APPS
+# 4️⃣ INSTALLED APPS
 INSTALLED_APPS = [
+    # Django
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -33,8 +37,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.sites',
-    
-    # Third Party
+
+    # Third-party
     'rest_framework',
     'rest_framework_simplejwt',
     'allauth',
@@ -42,12 +46,12 @@ INSTALLED_APPS = [
     'allauth.socialaccount',
     'allauth.socialaccount.providers.google',
     'allauth.socialaccount.providers.facebook',
-    
-    # Local
+
+    # Local apps
     'api',
 ]
 
-# 5. MIDDLEWARE
+# 5️⃣ MIDDLEWARE
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -56,31 +60,38 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    # REQUIRED BY ALLAUTH:
-    'allauth.account.middleware.AccountMiddleware', 
+
+    # Required by Allauth
+    'allauth.account.middleware.AccountMiddleware',
 ]
 
-# 6. DATABASE (SUPABASE)
-# Automatically switch between Direct (Migrations) and Pooler (App)
+# 6️⃣ DATABASE (SQLite local / PostgreSQL production)
 is_migration = 'migrate' in sys.argv or 'makemigrations' in sys.argv
-db_url = os.getenv('DIRECT_URL') if is_migration else os.getenv('DATABASE_URL')
+use_postgres = os.getenv('USE_POSTGRES', 'False') == 'True'
 
-DATABASES = {
-    'default': dj_database_url.config(
-        default=db_url,
-        conn_max_age=600,
-        ssl_require=True,
-        engine='django.db.backends.postgresql',
-    )
-}
-
-# Supabase Pooler (6543) fix: Disable prepared statements
-if not is_migration:
-    DATABASES['default']['OPTIONS'] = {
-        'prepare_threshold': None,
+if use_postgres:
+    import dj_database_url
+    db_url = os.getenv('DIRECT_URL') if is_migration else os.getenv('DATABASE_URL')
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=db_url,
+            conn_max_age=600,
+            ssl_require=True,
+            engine='django.db.backends.postgresql',
+        )
+    }
+    if not is_migration:
+        DATABASES['default']['OPTIONS'] = {'prepare_threshold': None}
+else:
+    # Local SQLite for testing
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
     }
 
-# 7. TEMPLATES
+# 7️⃣ TEMPLATES (Allauth needs request context)
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -89,7 +100,7 @@ TEMPLATES = [
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.debug',
-                'django.template.context_processors.request', # Required by Allauth
+                'django.template.context_processors.request',  # Allauth requirement
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
             ],
@@ -97,7 +108,7 @@ TEMPLATES = [
     },
 ]
 
-# 8. REST FRAMEWORK
+# 8️⃣ REST FRAMEWORK + JWT
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
@@ -105,15 +116,40 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.CursorPagination',
+    'PAGE_SIZE': 10,
 }
 
+# 9️⃣ URLS & WSGI
 ROOT_URLCONF = 'core.urls'
 WSGI_APPLICATION = 'core.wsgi.application'
+ASGI_APPLICATION = 'core.asgi.application'
 
-# ... (Keep Password Validators, Internationalization, Static Files as they were)
+# 1️⃣0️⃣ PASSWORD VALIDATORS
+AUTH_PASSWORD_VALIDATORS = [
+    {
+        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+    },
+]
+
+# 1️⃣1️⃣ INTERNATIONALIZATION & TIMEZONE
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
+
+# 1️⃣2️⃣ STATIC FILES
 STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# 1️⃣3️⃣ CORS (For mobile apps)
+CORS_ALLOW_ALL_ORIGINS = True
