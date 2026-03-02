@@ -13,7 +13,10 @@ ENV/
 # Database (Supabase users don't need local sqlite files)
 *.sqlite3
 
-# Django stuff:
+# Django database files
+*.sqlite3
+
+# Django static and media
 static/
 media/
 staticfiles/
