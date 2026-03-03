@@ -11,7 +11,8 @@ load_dotenv(BASE_DIR / '.env')
 # 2️⃣ SECURITY
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-default-key-change-this')
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')
+# Wildcard allowed for local development/ADB testing
+ALLOWED_HOSTS = ['*', '192.168.0.108', 'localhost', '127.0.0.1']
 
 # 3️⃣ AUTH CONFIG
 AUTH_USER_MODEL = 'api.User'
@@ -34,9 +35,9 @@ INSTALLED_APPS = [
 
     # Third-party
     'rest_framework',
-    'rest_framework.authtoken', # Added for fallback
+    'rest_framework.authtoken',
     'rest_framework_simplejwt',
-    'corsheaders',              # Added for Flutter/Web connectivity
+    'corsheaders',
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
@@ -48,7 +49,7 @@ INSTALLED_APPS = [
 
 # 5️⃣ MIDDLEWARE
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware', # Must be at the top
+    'corsheaders.middleware.CorsMiddleware', # Must be first
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -60,25 +61,12 @@ MIDDLEWARE = [
 ]
 
 # 6️⃣ DATABASE
-is_migration = any(arg in sys.argv for arg in ['migrate', 'makemigrations'])
-use_postgres = os.getenv('USE_POSTGRES', 'False') == 'True'
-
-if use_postgres:
-    import dj_database_url
-    DATABASES = {
-        'default': dj_database_url.config(
-            default=os.getenv('DATABASE_URL'),
-            conn_max_age=600,
-            ssl_require=True
-        )
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
-else:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
-        }
-    }
+}
 
 # 7️⃣ TEMPLATES
 TEMPLATES = [
@@ -103,7 +91,7 @@ REST_FRAMEWORK = {
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated',
+        'rest_framework.permissions.AllowAny', # AllowAny for registration flow
     ],
 }
 
@@ -114,17 +102,46 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
-# 9️⃣ ALLAUTH SETTINGS (Crucial for Custom User)
-ACCOUNT_AUTHENTICATION_METHOD = 'username_email'
-ACCOUNT_EMAIL_REQUIRED = True
+# 9️⃣ ALLAUTH SETTINGS (Modern 2026 Config - No Warnings)
+ACCOUNT_LOGIN_METHODS = {'email', 'username'}
+ACCOUNT_SIGNUP_FIELDS = ['email*', 'username*'] # The * makes them required
+ACCOUNT_EMAIL_VERIFICATION = 'none'
 ACCOUNT_USER_MODEL_USERNAME_FIELD = 'username'
 
 # 1️⃣0️⃣ STATIC & MEDIA FILES
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-
 MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media' # This is where lookbook images go
+MEDIA_ROOT = BASE_DIR / 'media' 
 
-# 1️⃣1️⃣ CORS (Allow your Flutter app to connect)
-CORS_ALLOW_ALL_ORIGINS = True
+# 1️⃣1️⃣ CORS & SECURITY
+CORS_ALLOW_ALL_ORIGINS = True 
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+ROOT_URLCONF = 'core.urls'
+WSGI_APPLICATION = 'core.wsgi.application'
+
+CORS_ALLOW_METHODS = ["DELETE", "GET", "OPTIONS", "PATCH", "POST", "PUT"]
+CORS_ALLOW_HEADERS = [
+    "accept", "accept-encoding", "authorization", "content-type",
+    "dnt", "origin", "user-agent", "x-csrftoken", "x-requested-with",
+]
+
+# 1️⃣2️⃣ LOGGING
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {'class': 'logging.StreamHandler'},
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+    },
+}

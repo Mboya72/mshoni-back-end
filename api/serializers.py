@@ -1,9 +1,9 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from .models import (
-    TailorProfile, CustomerProfile, SellerProfile, JobPost, 
-    Bid, Project, Measurement, ServiceMenu, LookbookItem, 
-    Message, Tag, Notification
+    User, TailorProfile, JobPost, Bid, Project, 
+    Measurement, ServiceMenu, LookbookItem, CustomerProfile, 
+    Message, Tag, Notification, SellerProfile, Material  # <--- Add Material and SellerProfile here
 )
 
 User = get_user_model()
@@ -124,3 +124,11 @@ class NotificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Notification
         fields = ['id', 'user', 'message', 'created_at', 'is_read']
+        
+class MaterialSerializer(serializers.ModelSerializer):
+    seller_name = serializers.ReadOnlyField(source='seller.shop_name')
+
+    class Meta:
+        model = Material
+        fields = ['id', 'seller', 'seller_name', 'name', 'category', 'price', 'stock_quantity', 'image']
+        read_only_fields = ['seller']

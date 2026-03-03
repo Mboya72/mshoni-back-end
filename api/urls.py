@@ -2,9 +2,16 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from .views import (
-    RegisterView, MeasurementViewSet, LookbookViewSet, MessageViewSet, 
-    TagViewSet, NotificationViewSet, CustomerProfileViewSet, 
-    JobViewSet, ProjectViewSet
+    RegisterView, 
+    MeasurementViewSet, 
+    LookbookViewSet, 
+    MessageViewSet, 
+    TagViewSet,
+    NotificationViewSet, 
+    CustomerProfileViewSet,
+    JobViewSet, 
+    ProjectViewSet,
+    MaterialViewSet
 )
 
 # Initialize the router
@@ -13,6 +20,7 @@ router = DefaultRouter()
 # Profile & Personal Data
 router.register(r'measurements', MeasurementViewSet, basename='measurement')
 router.register(r'customer-profiles', CustomerProfileViewSet, basename='customer-profile')
+router.register(r'materials', MaterialViewSet, basename='material')
 
 # Tailor Specific
 router.register(r'lookbook', LookbookViewSet, basename='lookbook')

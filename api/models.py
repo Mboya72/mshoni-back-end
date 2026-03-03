@@ -14,6 +14,7 @@ class User(AbstractUser):
     role = models.CharField(max_length=10, choices=ROLE_CHOICES)
     phone_number = models.CharField(max_length=20, blank=True)
     whatsapp_enabled = models.BooleanField(default=True)
+    supabase_uid = models.CharField(max_length=255, unique=True, null=True, blank=True)
 
     def __str__(self):
         return f"{self.username} ({self.get_role_display()})"

@@ -3,6 +3,9 @@ from rest_framework import status, viewsets, permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
+from .models import Material, SellerProfile
+from .serializers import MaterialSerializer
+from rest_framework import viewsets, permissions
 
 from .models import (
     Measurement, LookbookItem, Message, Tag, 
@@ -14,22 +17,45 @@ from .serializers import (
     CustomerProfileSerializer, JobPostSerializer, ProjectStatusSerializer
 )
 
+from rest_framework.fields import empty
+
 class RegisterView(APIView):
     permission_classes = [permissions.AllowAny]
 
+    def get(self, request):
+        """Returns the fields required for registration to the frontend"""
+        serializer = RegisterSerializer()
+        fields = serializer.get_fields()
+        field_info = {}
+        
+        for name, field in fields.items():
+            # Skip read-only fields like 'id'
+            if field.read_only:
+                continue
+                
+            field_info[name] = {
+                'type': field.__class__.__name__,
+                'required': field.required,
+                'label': getattr(field, 'label', name.replace('_', ' ').title()),
+                'help_text': getattr(field, 'help_text', None),
+            }
+        return Response(field_info)
+
     def post(self, request):
+        """Handles actual user creation"""
         serializer = RegisterSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
             token, _ = Token.objects.get_or_create(user=user)
             return Response({
-                "message": "Account created successfully!",
+                "message": "Account created!",
                 "token": token.key,
                 "role": user.role,
-                "user_id": user.id
+                "username": user.username
             }, status=status.HTTP_201_CREATED)
+        
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
+    
 class MeasurementViewSet(viewsets.ModelViewSet):
     serializer_class = MeasurementSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -116,3 +142,26 @@ class NotificationViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return Notification.objects.filter(user=self.request.user).order_by('-created_at')
+    
+class MaterialViewSet(viewsets.ModelViewSet):
+    serializer_class = MaterialSerializer
+    queryset = Material.objects.all()
+
+    def perform_create(self, serializer):
+        # Ensure only sellers can post materials
+        if hasattr(self.request.user, 'seller_profile'):
+            serializer.save(seller=self.request.user.seller_profile)
+        else:
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError("Only Material Sellers can list products.")
+
+class CustomerProfileViewSet(viewsets.ModelViewSet):
+    serializer_class = CustomerProfileSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        # Users should only see their own profile info
+        return CustomerProfile.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
