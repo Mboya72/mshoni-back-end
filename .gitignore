@@ -83,8 +83,6 @@ celerybeat-schedule
 # dotenv
 .env
 
-Pundadiel@123
-
 # virtualenv
 .venv
 venv/
