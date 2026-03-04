@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'media_file',
     'users',
     'chat',
     'inventory',
@@ -49,7 +50,7 @@ INSTALLED_APPS = [
     'profiles',
     'projects',
     'tickets',
-    'media_file',
+    
 ]
 
 MIDDLEWARE = [

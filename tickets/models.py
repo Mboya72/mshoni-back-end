@@ -25,7 +25,12 @@ class Ticket(models.Model):
     priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default='medium')
     
     # Optional: Link to a specific project if it's a complaint
-    project = models.ForeignKey('projects.Project', on_delete=models.SET_NULL, null=True, blank=True)
+    project = models.ForeignKey(
+        'projects.Project', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True
+    )
 
     date_created = models.DateTimeField(auto_now_add=True)
     date_updated = models.DateTimeField(auto_now=True)

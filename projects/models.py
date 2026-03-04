@@ -1,12 +1,9 @@
 from django.db import models
 from django.conf import settings
-# Import from your profiles app instead of a separate customers app
-from profiles.models import Profile 
 
-class Order(models.Model):
+class Project(models.Model):  # Renamed from Order to Project
     CURRENCY_CHOICES = (("USD", "USD"), ("KES", "KES"))
     
-    # We use a simple status here, or move this to a separate 'Project' model
     STATUS_CHOICES = (
         ("not_started", "Not started"),
         ("in_progress", "In progress"),
@@ -15,13 +12,15 @@ class Order(models.Model):
 
     # The Tailor/Business owner
     user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="orders"
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="projects"
     )
     
-    # The Client (Linked to the Profile model we created)
+    # Using string reference 'profiles.Profile' to prevent import crashes
     customer = models.ForeignKey(
-        Profile, on_delete=models.CASCADE, related_name="orders",
-        limit_choices_to={'role': 'customer'} # Ensures only customers are selected
+        'profiles.Profile', 
+        on_delete=models.CASCADE, 
+        related_name="projects",
+        limit_choices_to={'role': 'customer'}
     )
     
     amount = models.DecimalField(max_digits=10, decimal_places=2)
@@ -33,7 +32,7 @@ class Order(models.Model):
     )
     currency = models.CharField(max_length=10, choices=CURRENCY_CHOICES, default="KES")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="not_started")
-    due_date = models.DateField(help_text="When the order is meant to be delivered")
+    due_date = models.DateField(help_text="When the work is meant to be delivered")
     notes = models.TextField(blank=True)
     is_fully_paid = models.BooleanField(
         default=False, help_text="Has the full payment been completed?"
@@ -46,9 +45,8 @@ class Order(models.Model):
     date_updated = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        # Updated to use the profile username since 'name' might not exist on Profile
-        return f"Order for {self.customer.user.username} on {self.date_created.date()}"
-    
+        return f"Project for {self.customer.user.username} - {self.status}"
+
 class ProjectUpdate(models.Model):
     STATUS_CHOICES = (
         ("cutting", "Cutting"),
@@ -59,21 +57,26 @@ class ProjectUpdate(models.Model):
         ("delivered", "Delivered"),
     )
     
-    order = models.ForeignKey(
-        Order, 
+    project = models.ForeignKey(
+        Project, # Now links to the renamed Project model
         on_delete=models.CASCADE, 
         related_name="updates"
     )
     status = models.CharField(max_length=20, choices=STATUS_CHOICES)
-    description = models.TextField(blank=True, help_text="What happened in this stage?")
+    description = models.TextField(blank=True)
     
-    # Optional: Link to an image in your media_file app to show progress
-    # image = models.ForeignKey('media_file.MediaFile', on_delete=models.SET_NULL, null=True, blank=True)
+    # Corrected string reference for your media app
+    image = models.ForeignKey(
+        'media_file.MediaFile', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True
+    )
 
     timestamp = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ['-timestamp'] # Shows newest updates first
+        ordering = ['-timestamp']
 
     def __str__(self):
-        return f"{self.order.id} moved to {self.get_status_display()}"
+        return f"Update: {self.project.id} is now {self.get_status_display()}"

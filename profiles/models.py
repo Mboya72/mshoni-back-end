@@ -73,7 +73,7 @@ class CatalogueItem(models.Model):
     
     # Updated: Changed app name to 'media' to match your User model import
     cover_image = models.ForeignKey(
-        'media.MediaFile', 
+        'media_file.MediaFile', 
         on_delete=models.SET_NULL, 
         null=True, 
         blank=True,

@@ -12,11 +12,11 @@ class User(AbstractUser):
     
     # Use the string 'media.MediaFile' instead of the class name
     profile_picture = models.ForeignKey(
-        'media.MediaFile', 
-        on_delete=models.SET_NULL, 
-        null=True, 
+        'media_file.MediaFile', # Make sure your app folder is 'media'
+        on_delete=models.SET_NULL,
+        null=True,
         blank=True,
-        default=None,  # Add this line explicitly
+        default=None,  # This helps Django avoid the type-check crash
         related_name='profile_users'
     )
 
