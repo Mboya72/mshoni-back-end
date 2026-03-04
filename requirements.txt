@@ -1,5 +1,6 @@
 asgiref==3.11.1
 Django==6.0.3
+django-cors-headers==4.9.0
 django-phonenumber-field==8.4.0
 djangorestframework==3.16.1
 djangorestframework_simplejwt==5.5.1
@@ -8,5 +9,7 @@ phonenumberslite==9.0.25
 psycopg2==2.9.11
 PyJWT==2.11.0
 python-decouple==3.8
+setuptools==82.0.0
 sqlparse==0.5.5
 tzdata==2025.3
+whitenoise==6.12.0

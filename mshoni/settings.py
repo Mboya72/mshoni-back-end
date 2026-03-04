@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     'tickets',
     'rest_framework_simplejwt',
     'authentication',
+    'corsheaders',
 ]
 
 MIDDLEWARE = [
