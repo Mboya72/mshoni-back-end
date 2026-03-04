@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     'projects',
     'tickets',
     'rest_framework_simplejwt',
+    'authentication',
 ]
 
 MIDDLEWARE = [

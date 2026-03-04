@@ -1,48 +1,33 @@
 """
 URL configuration for mshoni project.
-
-The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/5.2/topics/http/urls/
-Examples:
-Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
-Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
-from rest_framework_simplejwt.views import (
-    TokenObtainPairView,
-    TokenRefreshView,
-)
+from rest_framework_simplejwt.views import TokenRefreshView
 
 urlpatterns = [
     # 1. Django Admin
     path('admin/', admin.site.urls),
 
-    # 2. Authentication (JWT)
-    # Flutter will hit these to log in and get new tokens
-    path('api/auth/login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    # 2. Authentication (Custom App)
+    # This points to your new authentication/urls.py which contains login and register
+    path('api/auth/', include('authentication.urls')),
+    
+    # 3. Token Refresh (Keep this here so Flutter can refresh expired tokens)
+    
     path('api/auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 
-    # 3. Mshoni App APIs
-    path('api/users/', include('users.urls')),          # Profile management
-    path('api/profiles/', include('profiles.urls')),    # Lookbooks and tailor details
-    path('api/projects/', include('projects.urls')),    # Orders and fitting updates
-    path('api/media/', include('media_file.urls')),     # Centralized image uploads
-    path('api/tickets/', include('tickets.urls')),      # Support and disputes
-
+    # 4. Mshoni App APIs
+    path('api/users/', include('users.urls')),          
+    path('api/profiles/', include('profiles.urls')),    
+    path('api/projects/', include('projects.urls')),    
+    path('api/media/', include('media_file.urls')),     
+    path('api/tickets/', include('tickets.urls')),      
 ]
 
-# 4. Media & Static File Serving
-# This allows you to view uploaded images in your browser during development
+# 5. Media & Static File Serving
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
