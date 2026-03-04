@@ -9,12 +9,32 @@ class Profile(models.Model):
         ('admin', 'Admin'),
         ('support', 'Support'),
     ]
+    TAILOR_TYPE_CHOICES = [
+        ('regular', 'Regular Tailor'),
+        ('bespoke', 'Bespoke Tailor (Subscribed)'),
+    ]
 
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="profile")
+    # --- Core Fields ---
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.CASCADE, 
+        related_name="profile"
+    )
+    # Keeping role here is fine for quick profile lookups, but ensure it matches User.role
     role = models.CharField(max_length=10, choices=ROLE_CHOICES)
+    
+    tailor_type = models.CharField(
+        max_length=20, 
+        choices=TAILOR_TYPE_CHOICES, 
+        default='regular',
+        help_text="Only applicable for users with the 'tailor' role."
+    )
     phone_number = PhoneNumberField(blank=True)
     address = models.CharField(max_length=255, blank=True)
-    profile_picture = models.ImageField(upload_to='profiles/', blank=True)
+
+    # REMOVED: profile_picture. 
+    # Why? Because you added it as a ForeignKey to MediaFile in your User model.
+    # Access it via: request.user.profile_picture
 
     # --- Customer Specific Data ---
     measurements = models.JSONField(default=dict, blank=True) 
@@ -26,4 +46,42 @@ class Profile(models.Model):
     experience_years = models.PositiveIntegerField(default=0)
 
     def __str__(self):
-        return f"{self.user.username} - {self.role}"
+        return f"{self.user.username} ({self.get_role_display()})"
+
+class CatalogueItem(models.Model):
+    # Fixed: Use string reference 'media.MediaFile' to match your app name 'media'
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="catalogue_items",
+    )
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    
+    category = models.CharField(
+        max_length=100, 
+        help_text="e.g. Bridal, Men's Suit", 
+        blank=True
+    )
+    
+    starting_price = models.DecimalField(
+        max_digits=10, 
+        decimal_places=2, 
+        null=True, 
+        blank=True
+    )
+    
+    # Updated: Changed app name to 'media' to match your User model import
+    cover_image = models.ForeignKey(
+        'media.MediaFile', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        related_name="catalogue_covers"
+    )
+
+    date_created = models.DateTimeField(auto_now_add=True)
+    date_updated = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.title} by {self.user.username}"

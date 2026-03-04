@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+# Remove the direct import of MediaFile to avoid circular imports
 
 class User(AbstractUser):
     ROLE_CHOICES = (
@@ -9,22 +10,31 @@ class User(AbstractUser):
         ('support', 'Support'),
     )
     
-    username = models.CharField(
-        max_length=150,
-        unique=True,
-        null=False,
-        blank=False,
+    # Use the string 'media.MediaFile' instead of the class name
+    profile_picture = models.ForeignKey(
+        'media.MediaFile', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        default=None,  # Add this line explicitly
+        related_name='profile_users'
     )
+
     email = models.EmailField(
         unique=True,
         null=False,
         blank=False,
     )
-    first_name = models.CharField(max_length=30)
-    last_name = models.CharField(max_length=30)
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='CUSTOMER',help_text="Role of the user in the system")
-    date_created = models.DateTimeField(auto_now_add=True)
+    
+    role = models.CharField(
+        max_length=20, 
+        choices=ROLE_CHOICES, 
+        default='customer', 
+        help_text="Role of the user in the system"
+    )
+
     date_updated = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.first_name} {self.last_name} ({self.role})"
+        name = f"{self.first_name} {self.last_name}".strip()
+        return f"{name if name else self.username} ({self.get_role_display()})"
