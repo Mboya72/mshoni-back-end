@@ -3,10 +3,10 @@ from django.contrib.auth.models import AbstractUser
 
 class User(AbstractUser):
     ROLE_CHOICES = (
-        ('ADMIN', 'Admin'),
-        ('TAILOR', 'Tailor'),
-        ('CUSTOMER', 'Customer'),
-        ('SUPPORT', 'Support'),
+        ('tailor', 'Tailor'),
+        ('customer', 'Customer'),
+        ('admin', 'Admin'),
+        ('support', 'Support'),
     )
     
     username = models.CharField(
