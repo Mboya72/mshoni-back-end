@@ -1,6 +1,6 @@
 from rest_framework import viewsets, status
 from rest_framework.response import Response
-from .models import Order
+from .models import Order # Assuming Order still exists for fabric sales
 from .serializers import OrderSerializer
 
 class OrderViewSet(viewsets.ModelViewSet):
@@ -8,23 +8,31 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if user.role == 'seller':
-            # Sellers see orders for their products (Sales Analytics)
+        # Checking role from the user's Profile
+        if hasattr(user, 'profile') and user.profile.role == 'tailor':
+            # Tailors act as "sellers" when selling fabric/items
             return Order.objects.filter(item__user=user)
-        # Tailors/Customers see things they bought
+        
+        # Customers see the materials they have bought
         return Order.objects.filter(buyer=user)
 
     def perform_create(self, serializer):
         item = serializer.validated_data['item']
         qty = serializer.validated_data['quantity']
         
-        # Calculate price based on Seller's set price
+        # 1. Calculate price based on Seller's price (Inventory Logic)
         total = item.price_per_yard * qty
         
-        # Create the order and decrease seller stock (Inventory Management)
+        # 2. Save the order with the calculated total
         order = serializer.save(buyer=self.request.user, total_price=total)
         
+        # 3. Inventory Management: Decrease stock
+        # Using decimal/float check for yards
         item.yards -= qty
         if item.yards <= 0:
+            item.yards = 0
             item.is_available = False
         item.save()
+
+        # 4. Optional: Trigger a notification to the seller
+        # notify_seller_of_new_order(order)
