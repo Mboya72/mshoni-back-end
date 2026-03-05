@@ -43,6 +43,14 @@ class Project(models.Model):  # Renamed from Order to Project
     )
     date_created = models.DateTimeField(auto_now_add=True)
     date_updated = models.DateTimeField(auto_now=True)
+    
+    escrow = models.OneToOneField(
+    'payments.EscrowTransaction', 
+    on_delete=models.SET_NULL, 
+    null=True, 
+    blank=True,
+    related_name='tailor_project'
+    )
 
     def __str__(self):
         return f"Project for {self.customer.user.username} - {self.status}"
@@ -75,8 +83,19 @@ class ProjectUpdate(models.Model):
 
     timestamp = models.DateTimeField(auto_now_add=True)
 
+    def save(self, *args, **kwargs):
+        # Determine if this is a new update or an edit
+        is_new = self._state.adding 
+        super().save(*args, **kwargs)
+        
+        # Trigger parent status change only when 'finished' is set
+        if self.status == 'finished':
+            self.project.status = 'completed'
+            self.project.save()
+
     class Meta:
         ordering = ['-timestamp']
 
     def __str__(self):
         return f"Update: {self.project.id} is now {self.get_status_display()}"
+    
