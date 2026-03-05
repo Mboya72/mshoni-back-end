@@ -62,7 +62,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    # Required for allauth google login
+    # Required for allauth google login sessions
     'allauth.account.middleware.AccountMiddleware',
 ]
 
@@ -98,7 +98,7 @@ DATABASES = {
     }
 }
 
-# Auth / Allauth Configuration
+# --- Auth / Allauth Configuration ---
 AUTH_USER_MODEL = 'users.User'
 SITE_ID = 1
 
@@ -107,20 +107,23 @@ AUTHENTICATION_BACKENDS = [
     'allauth.account.auth_backends.AuthenticationBackend',
 ]
 
-# Configure Allauth for your Email-based User
-ACCOUNT_AUTHENTICATION_METHOD = 'email'
-ACCOUNT_EMAIL_REQUIRED = True
-ACCOUNT_USERNAME_REQUIRED = False
+# The consolidated 2026 syntax
+ACCOUNT_LOGIN_METHODS = {'email'}
+ACCOUNT_EMAIL_VERIFICATION = 'none'
 ACCOUNT_USER_MODEL_USERNAME_FIELD = 'username'
 
-# SimpleJWT Settings
+# This single list now controls both required fields and email requirement
+# The '*' means the field is required. 
+ACCOUNT_SIGNUP_FIELDS = ['email*', 'username*', 'first_name', 'last_name']
+
+# --- SimpleJWT Settings ---
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
-# Celery Configuration
+# --- Celery Configuration ---
 CELERY_BROKER_URL = config('REDIS_URL', default='redis://localhost:6379/0')
 CELERY_RESULT_BACKEND = 'django-db'
 CELERY_CACHE_BACKEND = 'django-cache'
@@ -129,7 +132,7 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'Africa/Nairobi'
 
-# Cloudinary / Storage Configuration
+# --- Cloudinary / Storage Configuration ---
 CLOUDINARY_STORAGE = {
     'CLOUD_NAME': config('CLOUDINARY_CLOUD_NAME'),
     'API_KEY': config('CLOUDINARY_API_KEY'),
@@ -145,7 +148,7 @@ STORAGES = {
     },
 }
 
-# Static and Media
+# --- Static and Media ---
 STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
@@ -155,5 +158,5 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Security for Flutter connectivity
+# --- Security for Flutter connectivity ---
 CORS_ALLOW_ALL_ORIGINS = True
