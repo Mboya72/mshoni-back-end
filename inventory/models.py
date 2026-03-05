@@ -21,7 +21,7 @@ class Inventory(models.Model):
     # Pricing & Quantity
     yards = models.FloatField(help_text="Available length in yards")
     price_per_yard = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
-    
+    image = models.ImageField(upload_to='inventory/', null=True, blank=True)
     # Status tracking (Important for "Sold Fabrics" feature)
     is_available = models.BooleanField(default=True)
     
