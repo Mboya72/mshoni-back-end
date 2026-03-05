@@ -1,4 +1,5 @@
 import os 
+import dj_database_url  # MUST be imported
 from pathlib import Path
 from decouple import config
 from datetime import timedelta
@@ -62,7 +63,6 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    # Required for allauth google login sessions
     'allauth.account.middleware.AccountMiddleware',
 ]
 
@@ -76,7 +76,7 @@ TEMPLATES = [
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.debug',
-                'django.template.context_processors.request', # Required by allauth
+                'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
             ],
@@ -86,16 +86,15 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'mshoni.wsgi.application'
 
-# Database
+# --- Database Configuration ---
+# This logic uses DATABASE_URL on Render (Internal) and falls back to individual 
+# env vars for local development.
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': config('DB_NAME'),
-        'USER': config('DB_USER'),
-        'PASSWORD': config('DB_PASSWORD'),
-        'HOST': config('DB_HOST'),
-        'PORT': config('DB_PORT'),
-    }
+    'default': dj_database_url.config(
+        default=config('DATABASE_URL', default=f"postgres://{config('DB_USER')}:{config('DB_PASSWORD')}@{config('DB_HOST')}:{config('DB_PORT')}/{config('DB_NAME')}"),
+        conn_max_age=600,
+        conn_health_checks=True,
+    )
 }
 
 # --- Social Auth (Google) ---
@@ -104,16 +103,11 @@ SOCIALACCOUNT_PROVIDERS = {
         'APP': {
             'client_id': config('GOOGLE_CLIENT_ID'),
             'secret': config('GOOGLE_CLIENT_SECRET'),
-            'key': ''  # Usually left empty for Google
+            'key': '' 
         },
-        'SCOPE': [
-            'profile',
-            'email',
-        ],
-        'AUTH_PARAMS': {
-            'access_type': 'online',
-        },
-        'OAUTH_PKCE_ENABLED': True, # Recommended for Flutter/Mobile apps
+        'SCOPE': ['profile', 'email'],
+        'AUTH_PARAMS': {'access_type': 'online'},
+        'OAUTH_PKCE_ENABLED': True,
     }
 }
 
@@ -126,13 +120,9 @@ AUTHENTICATION_BACKENDS = [
     'allauth.account.auth_backends.AuthenticationBackend',
 ]
 
-# The consolidated 2026 syntax
 ACCOUNT_LOGIN_METHODS = {'email'}
 ACCOUNT_EMAIL_VERIFICATION = 'none'
 ACCOUNT_USER_MODEL_USERNAME_FIELD = 'username'
-
-# This single list now controls both required fields and email requirement
-# The '*' means the field is required. 
 ACCOUNT_SIGNUP_FIELDS = ['email*', 'username*', 'first_name', 'last_name']
 
 # --- SimpleJWT Settings ---
@@ -176,6 +166,4 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-# --- Security for Flutter connectivity ---
 CORS_ALLOW_ALL_ORIGINS = True
