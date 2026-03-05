@@ -3,7 +3,7 @@ from pathlib import Path
 from decouple import config
 from datetime import timedelta
 
-ROOT_URLCONF = 'mshoni.urls'
+# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
@@ -14,15 +14,69 @@ DEBUG = config('DEBUG', default=True, cast=bool)
 
 ALLOWED_HOSTS = ['mshoni-back-end.onrender.com', 'localhost', '127.0.0.1']
 
+# Application definition
+INSTALLED_APPS = [
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+    'django.contrib.sites',  # Required for allauth
+    
+    # Third party
+    'rest_framework',
+    'rest_framework_simplejwt',
+    'corsheaders',
+    'cloudinary_storage',
+    'cloudinary',
+    'django_celery_results',
+    
+    # Allauth & Google Auth
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.google',
+    
+    # Internal Apps
+    'users',
+    'profiles',
+    'media_file',
+    'chat',
+    'inventory',
+    'marketplace',
+    'notifications',
+    'payments',
+    'projects',
+    'tickets',
+    'authentication',
+]
+
+MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
+    'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware', 
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # Required for allauth google login
+    'allauth.account.middleware.AccountMiddleware',
+]
+
+ROOT_URLCONF = 'mshoni.urls'
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [], # You can add [BASE_DIR / 'templates'] if you create a templates folder
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.debug',
-                'django.template.context_processors.request',
+                'django.template.context_processors.request', # Required by allauth
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
             ],
@@ -30,51 +84,9 @@ TEMPLATES = [
     },
 ]
 
-# Application definition
-INSTALLED_APPS = [
-    'cloudinary_storage',
-    'cloudinary', 
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles', # REMOVED DUPLICATE from here
-    
-    # Third party
-    'rest_framework',
-    'rest_framework_simplejwt',
-    'corsheaders',
-    
-    # Internal Apps
-    'media_file',
-    'users',
-    'chat',
-    'inventory',
-    'marketplace',
-    'notifications',
-    'payments',
-    'profiles',
-    'projects',
-    'tickets',
-    'authentication',
-    'django_celery_results',
-]
+WSGI_APPLICATION = 'mshoni.wsgi.application'
 
-MIDDLEWARE = [
-    'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware', 
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware', # Keep high up     
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
-]
-
-# ... (ROOT_URLCONF, TEMPLATES, WSGI remains same) ...
-
+# Database
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
@@ -86,31 +98,43 @@ DATABASES = {
     }
 }
 
-# Redis will run on localhost during development
-# The "Post Office" where tasks are queued
-CELERY_BROKER_URL = 'redis://localhost:6379/0'
+# Auth / Allauth Configuration
+AUTH_USER_MODEL = 'users.User'
+SITE_ID = 1
 
-# The "Filing Cabinet" where task history is saved for the Admin
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+    'allauth.account.auth_backends.AuthenticationBackend',
+]
+
+# Configure Allauth for your Email-based User
+ACCOUNT_AUTHENTICATION_METHOD = 'email'
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_USERNAME_REQUIRED = False
+ACCOUNT_USER_MODEL_USERNAME_FIELD = 'username'
+
+# SimpleJWT Settings
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'AUTH_HEADER_TYPES': ('Bearer',),
+}
+
+# Celery Configuration
+CELERY_BROKER_URL = config('REDIS_URL', default='redis://localhost:6379/0')
 CELERY_RESULT_BACKEND = 'django-db'
 CELERY_CACHE_BACKEND = 'django-cache'
-
-# Security and Formatting
 CELERY_ACCEPT_CONTENT = ['application/json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
-CELERY_TIMEZONE = 'Africa/Nairobi'  # Matches your local time for accurate logs
+CELERY_TIMEZONE = 'Africa/Nairobi'
 
-# Cloudinary Configuration - FIXED THE CONFIG CALLS
+# Cloudinary / Storage Configuration
 CLOUDINARY_STORAGE = {
     'CLOUD_NAME': config('CLOUDINARY_CLOUD_NAME'),
     'API_KEY': config('CLOUDINARY_API_KEY'),
     'API_SECRET': config('CLOUDINARY_API_SECRET'),
-    'MAGIC_FILE_TYPES': 'image',
 }
-
-DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
-
-# ... (JWT and Auth settings remain same) ...
 
 STORAGES = {
     "default": {
@@ -121,18 +145,15 @@ STORAGES = {
     },
 }
 
-AUTH_USER_MODEL = 'users.User'
-
 # Static and Media
 STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 MEDIA_URL = '/media/'
-# No need for MEDIA_ROOT when using Cloudinary, but good for local fallback
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-CORS_ALLOW_ALL_ORIGINS = True # Added this so Flutter can connect
+# Security for Flutter connectivity
+CORS_ALLOW_ALL_ORIGINS = True

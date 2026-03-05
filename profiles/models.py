@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
 from phonenumber_field.modelfields import PhoneNumberField
+from django.utils import timezone
 
 class Profile(models.Model):
     ROLE_CHOICES = [
@@ -20,6 +21,13 @@ class Profile(models.Model):
         on_delete=models.CASCADE, 
         related_name="profile"
     )
+    membership_tier = models.CharField(
+        max_length=20, 
+        choices=[('FREE', 'Free'), ('PRO', 'Pro'), ('PREMIUM', 'Premium')],
+        default='FREE'
+    )
+    subscription_expires = models.DateTimeField(null=True, blank=True)
+    
     # Keeping role here is fine for quick profile lookups, but ensure it matches User.role
     role = models.CharField(max_length=10, choices=ROLE_CHOICES)
     
@@ -44,6 +52,24 @@ class Profile(models.Model):
     business_name = models.CharField(max_length=100, blank=True)
     bio = models.TextField(blank=True)
     experience_years = models.PositiveIntegerField(default=0)
+    
+    @property
+    def is_subscription_active(self):
+        """Checks if the Pro/Premium subscription is still valid."""
+        if self.membership_tier == 'FREE':
+            return False
+        if self.subscription_expires and self.subscription_expires > timezone.now():
+            return True
+        return False
+
+    def can_add_catalogue_item(self):
+        """Enforces Mshoni Tier limits for Catalogue items."""
+        count = self.user.catalogue_items.count()
+        if self.membership_tier == 'FREE' and count >= 5:
+            return False
+        if self.membership_tier == 'PRO' and count >= 50:
+            return False
+        return True # PREMIUM is unlimited
 
     def __str__(self):
         return f"{self.user.username} ({self.get_role_display()})"
