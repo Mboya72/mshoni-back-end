@@ -84,6 +84,36 @@ TEMPLATES = [
     },
 ]
 
+# --- CORS Settings ---
+# Keep this True for initial Flutter development
+CORS_ALLOW_ALL_ORIGINS = True 
+
+# If you want to be more secure later, use:
+# CORS_ALLOWED_ORIGINS = [
+#     "http://localhost:3000",
+#     "https://mshoni-back-end.onrender.com",
+# ]
+
+# Allow common HTTP methods used by your API
+CORS_ALLOW_METHODS = [
+    "DELETE",
+    "GET",
+    "OPTIONS",
+    "PATCH",
+    "POST",
+    "PUT",
+]
+
+# Allow the specific headers Flutter/SimpleJWT will send
+CORS_ALLOW_HEADERS = [
+    "accept",
+    "authorization",
+    "content-type",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
+]
+
 WSGI_APPLICATION = 'mshoni.wsgi.application'
 
 # --- Database Configuration ---
