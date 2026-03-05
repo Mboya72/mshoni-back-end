@@ -1,7 +1,8 @@
 from rest_framework import viewsets, status
+from rest_framework.decorators import action
 from rest_framework.response import Response
-from .models import Order # Assuming Order still exists for fabric sales
-from .serializers import OrderSerializer
+from .models import Bid, JobPost, Order
+from .serializers import BidSerializer, OrderSerializer
 
 class OrderViewSet(viewsets.ModelViewSet):
     serializer_class = OrderSerializer
@@ -36,3 +37,40 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         # 4. Optional: Trigger a notification to the seller
         # notify_seller_of_new_order(order)
+        
+class BidViewSet(viewsets.ModelViewSet):
+    queryset = Bid.objects.all()
+    serializer_class = BidSerializer
+
+    @action(detail=True, methods=['post'])
+    def accept(self, request, pk=None):
+        bid = self.get_object()
+        job = bid.job
+
+        # 1. Validation: Only the customer who posted the job can accept a bid
+        # Note: Accessing the customer's user through the profile relationship
+        if job.customer.user != request.user:
+            return Response({"error": "Unauthorized. You did not post this job."}, 
+                            status=status.HTTP_403_FORBIDDEN)
+
+        # 2. Update Bid and Job Status
+        bid.status = 'accepted'
+        bid.save()
+        job.is_active = False
+        job.save()
+
+        # 3. Create the Project (The service contract)
+        from projects.models import Project
+        project = Project.objects.create(
+            user=bid.tailor,  # The tailor who won the bid
+            customer=job.customer,
+            amount=bid.amount,
+            due_date=job.deadline,
+            status='not_started',
+            notes=f"Accepted bid proposal: {bid.proposal}"
+        )
+
+        return Response({
+            "message": "Bid accepted and project created!",
+            "project_id": project.id
+        }, status=status.HTTP_201_CREATED)

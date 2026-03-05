@@ -1,5 +1,7 @@
 from rest_framework import serializers
 from .models import Order
+from .models import JobPost, Bid
+from profiles.serializers import ProfileSerializer
 
 class OrderSerializer(serializers.ModelSerializer):
     # These fields are calculated on the backend, so they are read-only for the user
@@ -33,3 +35,30 @@ class OrderSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Item not found.")
             
         return value
+    
+class BidSerializer(serializers.ModelSerializer):
+    tailor_name = serializers.ReadOnlyField(source='tailor.username')
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+
+    class Meta:
+        model = Bid
+        fields = [
+            'id', 'job', 'tailor', 'tailor_name', 'amount', 
+            'proposal', 'estimated_days', 'status', 'status_display', 'created_at'
+        ]
+        read_only_fields = ['tailor', 'status']
+
+class JobPostSerializer(serializers.ModelSerializer):
+    # This allows a customer to see all bids on their post
+    bids = BidSerializer(many=True, read_only=True)
+    customer_details = ProfileSerializer(source='customer', read_only=True)
+    bid_count = serializers.IntegerField(source='bids.count', read_only=True)
+
+    class Meta:
+        model = JobPost
+        fields = [
+            'id', 'customer', 'customer_details', 'title', 'description', 
+            'budget_range', 'category', 'deadline', 'reference_image', 
+            'is_active', 'bid_count', 'bids', 'created_at'
+        ]
+        read_only_fields = ['customer', 'is_active']

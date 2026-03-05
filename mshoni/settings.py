@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     'projects',
     'tickets',
     'authentication',
+    'django_celery_results',
 ]
 
 MIDDLEWARE = [
@@ -84,6 +85,20 @@ DATABASES = {
         'PORT': config('DB_PORT'),
     }
 }
+
+# Redis will run on localhost during development
+# The "Post Office" where tasks are queued
+CELERY_BROKER_URL = 'redis://localhost:6379/0'
+
+# The "Filing Cabinet" where task history is saved for the Admin
+CELERY_RESULT_BACKEND = 'django-db'
+CELERY_CACHE_BACKEND = 'django-cache'
+
+# Security and Formatting
+CELERY_ACCEPT_CONTENT = ['application/json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'Africa/Nairobi'  # Matches your local time for accurate logs
 
 # Cloudinary Configuration - FIXED THE CONFIG CALLS
 CLOUDINARY_STORAGE = {
