@@ -20,7 +20,8 @@ urlpatterns = [
     path('api/auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 
     # 4. Mshoni App APIs
-    path('api/users/', include('users.urls')),          
+    path('api/users/', include('users.urls')),
+    path('api/inventory/', include('inventory.urls')),          
     path('api/profiles/', include('profiles.urls')),    
     path('api/projects/', include('projects.urls')),    
     path('api/media/', include('media_file.urls')),     
