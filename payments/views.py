@@ -6,6 +6,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from .models import EscrowTransaction
 from .serializers import EscrowSerializer # Assuming you created this
+from .services import notify_tailor_of_payment
 
 class EscrowViewSet(viewsets.ModelViewSet):
     queryset = EscrowTransaction.objects.all()
@@ -43,5 +44,6 @@ def mpesa_callback(request):
         # Update the Order status too
         escrow.order.status = 'paid_and_processing'
         escrow.order.save()
+        notify_tailor_of_payment(escrow.project)
         
     return Response({"ResultCode": 0, "ResultDesc": "Success"})

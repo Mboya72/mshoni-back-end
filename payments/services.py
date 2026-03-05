@@ -1,5 +1,7 @@
 # payments/services.py (Business Logic)
 from django.utils import timezone
+from chat.models import Message, Conversation
+from payments.models import EscrowTransaction
 
 def release_funds(escrow_id):
     """Transfer funds from Mshoni holding account to the Tailor's M-Pesa"""
@@ -23,3 +25,18 @@ def initiate_dispute(escrow_id):
     escrow.status = 'disputed'
     escrow.save()
     # Trigger an email/notification to you (the Admin)
+    
+def notify_tailor_of_payment(project):
+    """
+    Sends an automated message to the chat once funds are secured.
+    """
+    # Use the customer and tailor to find the right conversation
+    # Or if Project has a direct link to conversation, use that.
+    convo = Conversation.objects.filter(participants=project.user).filter(participants=project.customer.user).first()
+    
+    if convo:
+        Message.objects.create(
+            conversation=convo,
+            sender=None,  # None usually indicates a System/Bot message
+            text=f"✅ Payment of {project.currency} {project.amount} has been secured in Escrow. You can now begin work!"
+        )
