@@ -98,6 +98,25 @@ DATABASES = {
     }
 }
 
+# --- Social Auth (Google) ---
+SOCIALACCOUNT_PROVIDERS = {
+    'google': {
+        'APP': {
+            'client_id': config('GOOGLE_CLIENT_ID'),
+            'secret': config('GOOGLE_CLIENT_SECRET'),
+            'key': ''  # Usually left empty for Google
+        },
+        'SCOPE': [
+            'profile',
+            'email',
+        ],
+        'AUTH_PARAMS': {
+            'access_type': 'online',
+        },
+        'OAUTH_PKCE_ENABLED': True, # Recommended for Flutter/Mobile apps
+    }
+}
+
 # --- Auth / Allauth Configuration ---
 AUTH_USER_MODEL = 'users.User'
 SITE_ID = 1
