@@ -125,7 +125,7 @@ import dj_database_url
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
 if DATABASE_URL:
-    # Use the Render PostgreSQL
+    # Production (Render)
     DATABASES = {
         'default': dj_database_url.config(
             default=DATABASE_URL,
@@ -134,7 +134,7 @@ if DATABASE_URL:
         )
     }
 else:
-    # Use your local .env credentials
+    # Local Development (using your .env credentials)
     DATABASES = {
         'default': dj_database_url.parse(
             f"postgres://{config('DB_USER')}:{config('DB_PASSWORD')}@{config('DB_HOST')}:{config('DB_PORT')}/{config('DB_NAME')}"

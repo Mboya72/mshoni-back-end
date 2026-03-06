@@ -1,8 +1,42 @@
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, permissions # Added standard permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.views import APIView
+from django.db.models import Sum  # <--- CRITICAL: Add this for .aggregate(Sum(...))
 from .models import Bid, JobPost, Order
 from .serializers import BidSerializer, OrderSerializer
+
+class MarketplaceStatsView(APIView):
+    # Using standard IsAuthenticated to be safe
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        is_tailor = getattr(user, 'role', 'customer') == 'tailor'
+
+        if is_tailor:
+            # Aggregate returns a dictionary, 'or 0' handles cases with no orders
+            total_sales = Order.objects.filter(item__user=user).aggregate(Sum('total_price'))['total_price__sum'] or 0
+            active_bids = Bid.objects.filter(tailor=user, status='pending').count()
+            total_orders = Order.objects.filter(item__user=user).count()
+            
+            return Response({
+                "total_revenue": total_sales,
+                "active_bids": active_bids,
+                "orders_count": total_orders,
+                "role": "tailor"
+            })
+        else:
+            total_spent = Order.objects.filter(buyer=user).aggregate(Sum('total_price'))['total_price__sum'] or 0
+            active_jobs = JobPost.objects.filter(customer__user=user, is_active=True).count()
+            my_orders = Order.objects.filter(buyer=user).count()
+
+            return Response({
+                "total_spent": total_spent,
+                "active_jobs": active_jobs,
+                "orders_placed": my_orders,
+                "role": "customer"
+            })
 
 class OrderViewSet(viewsets.ModelViewSet):
     serializer_class = OrderSerializer
