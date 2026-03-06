@@ -3,7 +3,6 @@ from django.contrib.auth import authenticate, get_user_model
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.decorators import api_view, permission_classes
 from rest_framework_simplejwt.tokens import RefreshToken
 
 # Google Auth imports
@@ -20,7 +19,6 @@ class RegisterView(generics.CreateAPIView):
 
     def post(self, request, *args, **kwargs):
         response = super().post(request, *args, **kwargs)
-        # Safely fetch user by email
         user = User.objects.get(email=request.data['email'])
         refresh = RefreshToken.for_user(user)
         
@@ -37,8 +35,6 @@ class LoginView(APIView):
     def post(self, request):
         email = request.data.get('email')
         password = request.data.get('password')
-        
-        # Ensure email is used for authentication
         user = authenticate(username=email, password=password)
         
         if user:
@@ -64,32 +60,39 @@ class GoogleLoginView(APIView):
             return Response({'error': 'Token is required'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            # Verify the ID Token with Google
-            # Ensure GOOGLE_CLIENT_ID is in your settings.py or .env
-            client_id = getattr(settings, 'GOOGLE_CLIENT_ID', None)
+            # 1. Fetch Client IDs
+            # If you have separate IDs for Android/iOS, you can pass them as a list
+            web_client_id = getattr(settings, 'GOOGLE_CLIENT_ID', None)
             
+            # 2. Verify Token
+            # Passing the web_client_id as the audience
             idinfo = id_token.verify_oauth2_token(
                 token, 
                 google_requests.Request(), 
-                client_id
+                web_client_id
             )
+
+            # 3. Validation Logic
+            if idinfo['iss'] not in ['accounts.google.com', 'https://accounts.google.com']:
+                raise ValueError('Wrong issuer.')
 
             email = idinfo['email']
             first_name = idinfo.get('given_name', '')
             last_name = idinfo.get('family_name', '')
 
-            # Find or Create the User
-            # We use email as the unique identifier
+            # 4. Find or Create User
+            # We use email for username to avoid split('@') collisions
             user, created = User.objects.get_or_create(
                 email=email,
                 defaults={
-                    'username': email, # Most custom user models use email for username
+                    'username': email, 
                     'first_name': first_name,
                     'last_name': last_name,
                     'role': assigned_role,
                 }
             )
 
+            # 5. Token Generation
             refresh = RefreshToken.for_user(user)
             
             return Response({
@@ -101,9 +104,11 @@ class GoogleLoginView(APIView):
             }, status=status.HTTP_200_OK)
 
         except ValueError as e:
+            # This will show up in your Render logs to tell you EXACTLY why it failed
+            print(f"DEBUG: Google Validation Failed: {str(e)}")
             return Response({'error': f'Invalid Google Token: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            # This prevents the 500 error by returning a 400 with the error message
+            print(f"DEBUG: Unexpected Backend Error: {str(e)}")
             return Response({'error': f'Backend Error: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
 
 class UserDetailView(generics.RetrieveUpdateAPIView):
