@@ -1,22 +1,26 @@
-from rest_framework import viewsets, status, permissions # Added standard permissions
+from decimal import Decimal
+from django.db.models import Sum
+from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from django.db.models import Sum  # <--- CRITICAL: Add this for .aggregate(Sum(...))
+
+# Import your models
 from .models import Bid, JobPost, Order
-from .serializers import BidSerializer, OrderSerializer
 
 class MarketplaceStatsView(APIView):
-    # Using standard IsAuthenticated to be safe
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         user = request.user
-        is_tailor = getattr(user, 'role', 'customer') == 'tailor'
+        # Logic check: Using user.role (from Google Login) or profile.role
+        role = getattr(user, 'role', 'customer')
+        is_tailor = role == 'tailor'
 
         if is_tailor:
-            # Aggregate returns a dictionary, 'or 0' handles cases with no orders
-            total_sales = Order.objects.filter(item__user=user).aggregate(Sum('total_price'))['total_price__sum'] or 0
+            # Stats for the Tailor (Seller/Service Provider)
+            sales_data = Order.objects.filter(item__user=user).aggregate(Sum('total_price'))
+            total_sales = sales_data['total_price__sum'] or 0
             active_bids = Bid.objects.filter(tailor=user, status='pending').count()
             total_orders = Order.objects.filter(item__user=user).count()
             
@@ -27,7 +31,9 @@ class MarketplaceStatsView(APIView):
                 "role": "tailor"
             })
         else:
-            total_spent = Order.objects.filter(buyer=user).aggregate(Sum('total_price'))['total_price__sum'] or 0
+            # Stats for the Customer (Buyer)
+            spent_data = Order.objects.filter(buyer=user).aggregate(Sum('total_price'))
+            total_spent = spent_data['total_price__sum'] or 0
             active_jobs = JobPost.objects.filter(customer__user=user, is_active=True).count()
             my_orders = Order.objects.filter(buyer=user).count()
 
@@ -39,64 +45,54 @@ class MarketplaceStatsView(APIView):
             })
 
 class OrderViewSet(viewsets.ModelViewSet):
-    serializer_class = OrderSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    # serializer_class = OrderSerializer # Ensure this is imported correctly
 
     def get_queryset(self):
         user = self.request.user
-        # Checking role from the user's Profile
-        if hasattr(user, 'profile') and user.profile.role == 'tailor':
-            # Tailors act as "sellers" when selling fabric/items
+        # Standardizing on user.role for Mshoni
+        if getattr(user, 'role', 'customer') == 'tailor':
             return Order.objects.filter(item__user=user)
-        
-        # Customers see the materials they have bought
         return Order.objects.filter(buyer=user)
 
     def perform_create(self, serializer):
         item = serializer.validated_data['item']
-        qty = serializer.validated_data['quantity']
+        qty = Decimal(str(serializer.validated_data['quantity']))
         
-        # 1. Calculate price based on Seller's price (Inventory Logic)
-        total = item.price_per_yard * qty
+        # Calculate price based on Inventory pricing
+        total = Decimal(str(item.price_per_yard)) * qty
         
-        # 2. Save the order with the calculated total
+        # Save order and update inventory
         order = serializer.save(buyer=self.request.user, total_price=total)
         
-        # 3. Inventory Management: Decrease stock
-        # Using decimal/float check for yards
-        item.yards -= qty
+        item.yards -= float(qty)
         if item.yards <= 0:
             item.yards = 0
             item.is_available = False
         item.save()
 
-        # 4. Optional: Trigger a notification to the seller
-        # notify_seller_of_new_order(order)
-        
 class BidViewSet(viewsets.ModelViewSet):
     queryset = Bid.objects.all()
-    serializer_class = BidSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    # serializer_class = BidSerializer
 
     @action(detail=True, methods=['post'])
     def accept(self, request, pk=None):
         bid = self.get_object()
         job = bid.job
 
-        # 1. Validation: Only the customer who posted the job can accept a bid
-        # Note: Accessing the customer's user through the profile relationship
         if job.customer.user != request.user:
-            return Response({"error": "Unauthorized. You did not post this job."}, 
-                            status=status.HTTP_403_FORBIDDEN)
+            return Response({"error": "Unauthorized."}, status=status.HTTP_403_FORBIDDEN)
 
-        # 2. Update Bid and Job Status
         bid.status = 'accepted'
         bid.save()
         job.is_active = False
         job.save()
 
-        # 3. Create the Project (The service contract)
+        # Import here to avoid circular dependencies
         from projects.models import Project
         project = Project.objects.create(
-            user=bid.tailor,  # The tailor who won the bid
+            user=bid.tailor,
             customer=job.customer,
             amount=bid.amount,
             due_date=job.deadline,
@@ -105,6 +101,6 @@ class BidViewSet(viewsets.ModelViewSet):
         )
 
         return Response({
-            "message": "Bid accepted and project created!",
+            "message": "Bid accepted!",
             "project_id": project.id
         }, status=status.HTTP_201_CREATED)
