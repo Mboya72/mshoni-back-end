@@ -121,11 +121,17 @@ WSGI_APPLICATION = 'mshoni.wsgi.application'
 # env vars for local development.
 DATABASES = {
     'default': dj_database_url.config(
-        default=config('DATABASE_URL', default=f"postgres://{config('DB_USER')}:{config('DB_PASSWORD')}@{config('DB_HOST')}:{config('DB_PORT')}/{config('DB_NAME')}"),
+        # This will pull 'DATABASE_URL' from your Render Environment variables
+        default=os.environ.get('DATABASE_URL'),
         conn_max_age=600,
         conn_health_checks=True,
     )
 }
+
+# Add this check to prevent the "NAME" error if DATABASE_URL is missing
+if not DATABASES['default'].get('NAME'):
+    # This acts as a dummy for the build process if needed
+    DATABASES['default'] = dj_database_url.parse('postgres://user:pass@localhost:5432/mshoni')
 
 # --- Social Auth (Google) ---
 SOCIALACCOUNT_PROVIDERS = {
