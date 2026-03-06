@@ -1,9 +1,16 @@
+from django.conf import settings
+from django.contrib.auth import authenticate, get_user_model
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
-from django.contrib.auth import authenticate
+# Google Auth imports
+from google.oauth2 import id_token
+from google.auth.transport import requests
+
 from .serializers import UserSerializer, RegisterSerializer
+
+User = get_user_model()
 
 class RegisterView(generics.CreateAPIView):
     serializer_class = RegisterSerializer
@@ -11,9 +18,7 @@ class RegisterView(generics.CreateAPIView):
 
     def post(self, request, *args, **kwargs):
         response = super().post(request, *args, **kwargs)
-        # Auto-generate tokens upon registration
-        from django.contrib.auth import get_user_model
-        User = get_user_model()
+        # Fetch user to generate tokens immediately after creation
         user = User.objects.get(email=request.data['email'])
         refresh = RefreshToken.for_user(user)
         
@@ -25,17 +30,13 @@ class RegisterView(generics.CreateAPIView):
         }, status=status.HTTP_201_CREATED)
 
 class LoginView(APIView):
-    """
-    This view handles the POST /api/users/login/ request 
-    from your Flutter AuthService.
-    """
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
         email = request.data.get('email')
         password = request.data.get('password')
         
-        # Ensure your custom User model uses email as the username field
+        # Django authenticate uses 'username' parameter even if checking email
         user = authenticate(username=email, password=password)
         
         if user:
@@ -54,12 +55,44 @@ class GoogleLoginView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
-        # This receives the 'token' and 'role' from Flutter
         token = request.data.get('token')
-        role = request.data.get('role', 'customer')
-        
-        # TODO: Implement google-auth verification logic
-        return Response({'message': 'Google verification logic pending'}, status=status.HTTP_501_NOT_IMPLEMENTED)
+        assigned_role = request.data.get('role', 'customer')
+
+        try:
+            # 1. Verify the ID Token with Google
+            idinfo = id_token.verify_oauth2_token(
+                token, requests.Request(), settings.GOOGLE_CLIENT_ID
+            )
+
+            # 2. Extract user info
+            email = idinfo['email']
+            first_name = idinfo.get('given_name', '')
+            last_name = idinfo.get('family_name', '')
+
+            # 3. Find or Create the User
+            user, created = User.objects.get_or_create(
+                email=email,
+                defaults={
+                    'username': email.split('@')[0],
+                    'first_name': first_name,
+                    'last_name': last_name,
+                    'role': assigned_role,
+                }
+            )
+
+            # 4. Generate Tokens
+            refresh = RefreshToken.for_user(user)
+            
+            return Response({
+                'access': str(refresh.access_token),
+                'refresh': str(refresh),
+                'role': user.role,
+                'email': user.email,
+                'first_name': user.first_name,
+            }, status=status.HTTP_200_OK)
+
+        except ValueError:
+            return Response({'error': 'Invalid Google Token'}, status=status.HTTP_400_BAD_REQUEST)
 
 class UserDetailView(generics.RetrieveUpdateAPIView):
     serializer_class = UserSerializer
