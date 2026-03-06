@@ -16,21 +16,21 @@ urlpatterns = [
     # 1. Django Admin
     path('admin/', admin.site.urls),
 
-    # 2. Authentication (Custom App)
-    # This points to your new authentication/urls.py which contains login and register
+    # 2. Authentication
     path('api/auth/', include('authentication.urls')),
     
-    # 3. Token Refresh (Keep this here so Flutter can refresh expired tokens)
-    
+    # 3. Token Refresh
     path('api/auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 
     # 4. Mshoni App APIs
     path('api/users/', include('users.urls')),
-    path('api/inventory/', include('inventory.urls')),          
+    path('api/inventory/', include('inventory.urls')),           
     path('api/profiles/', include('profiles.urls')),    
     path('api/projects/', include('projects.urls')),    
     path('api/media/', include('media_file.urls')),     
-    path('api/tickets/', include('tickets.urls')),      
+    path('api/tickets/', include('tickets.urls')),
+    # --- MISSING LINE BELOW ---
+    path('api/marketplace/', include('marketplace.urls')), 
 ]
 
 # 5. Media & Static File Serving
