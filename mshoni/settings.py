@@ -87,6 +87,7 @@ TEMPLATES = [
 # --- CORS Settings ---
 # Keep this True for initial Flutter development
 CORS_ALLOW_ALL_ORIGINS = True 
+CORS_ALLOW_CREDENTIALS = True
 
 # If you want to be more secure later, use:
 # CORS_ALLOWED_ORIGINS = [
@@ -199,6 +200,16 @@ STORAGES = {
     "staticfiles": {
         "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     },
+}
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.SessionAuthentication', # Move this second
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    ),
 }
 
 # --- Static and Media ---

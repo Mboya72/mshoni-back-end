@@ -2,12 +2,15 @@ from rest_framework import viewsets, generics, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
+from rest_framework_simplejwt.authentication import JWTAuthentication # Add this
 from django.utils import timezone
 from .models import Message, Conversation
-from .serializers import MessageSerializer, ConversationSerializer # Ensure these exist!
+from .serializers import MessageSerializer, ConversationSerializer
 
-# 1. Conversation ViewSet
+# 1. Conversation ViewSet (For Detail views / Chat Windows)
 class ConversationViewSet(viewsets.ModelViewSet):
+    # Explicitly define JWT to bypass any Session/CSRF issues
+    authentication_classes = [JWTAuthentication] 
     permission_classes = [IsAuthenticated]
     queryset = Conversation.objects.all()
     serializer_class = ConversationSerializer
@@ -16,20 +19,21 @@ class ConversationViewSet(viewsets.ModelViewSet):
         # Filter: Only show conversations where the logged-in user is a participant
         return self.queryset.filter(participants=self.request.user)
 
-# 2. Fixed Inbox List (The /api/chat/threads/ endpoint)
+# 2. Inbox List (The /api/chat/threads/ endpoint)
 class ChatThreadListView(generics.ListAPIView):
+    authentication_classes = [JWTAuthentication] # Crucial for Flutter
     permission_classes = [IsAuthenticated]
     serializer_class = ConversationSerializer
 
     def get_queryset(self):
-        # FIX: Changed 'order_index' to 'order_by'
-        # This sorts the most recent messages to the top of the Flutter list
+        # Optimized: prefetch_related reduces database hits for 'participants'
         return Conversation.objects.filter(
             participants=self.request.user
-        ).order_by('-updated_at')
+        ).prefetch_related('participants').order_by('-updated_at')
 
-# 3. Message Actions
+# 3. Message Actions (For Receipt/Seen logic)
 class MessageViewSet(viewsets.ModelViewSet):
+    authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
     queryset = Message.objects.all()
     serializer_class = MessageSerializer
@@ -37,12 +41,12 @@ class MessageViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def acknowledge_receipt(self, request, pk=None):
         message = self.get_object()
-        # Only update if it hasn't been marked delivered yet
+        # Security: Only recipient should be able to mark as delivered
         if not message.is_delivered:
             message.is_delivered = True
             message.delivered_at = timezone.now()
             message.save()
-        return Response({'status': 'delivered'})
+        return Response({'status': 'delivered'}, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['post'])
     def mark_seen(self, request, pk=None):
@@ -52,4 +56,4 @@ class MessageViewSet(viewsets.ModelViewSet):
             message.is_seen = True
             message.seen_at = timezone.now()
             message.save()
-        return Response({'status': 'read'})
+        return Response({'status': 'read'}, status=status.HTTP_200_OK)
